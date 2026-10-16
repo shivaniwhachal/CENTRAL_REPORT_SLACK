@@ -27,6 +27,7 @@ class SlackClient:
         title: str,
         comment: str,
     ) -> str:
+        destination = self._destination(channel_id)
         reserved = self._api_form(
             "https://slack.com/api/files.getUploadURLExternal",
             {"filename": filename, "length": str(len(png_bytes))},
@@ -36,7 +37,7 @@ class SlackClient:
             "https://slack.com/api/files.completeUploadExternal",
             {
                 "files": [{"id": reserved["file_id"], "title": title}],
-                "channel_id": channel_id,
+                "channel_id": destination,
                 "initial_comment": comment,
             },
         )
@@ -48,8 +49,18 @@ class SlackClient:
     def post_text(self, channel_id: str, text: str) -> None:
         self._api_json(
             "https://slack.com/api/chat.postMessage",
-            {"channel": channel_id, "text": text},
+            {"channel": self._destination(channel_id), "text": text},
         )
+
+    def _destination(self, channel_id: str) -> str:
+        """A member id (U…) is opened as a DM. A channel id is used as given."""
+        if not channel_id.startswith("U"):
+            return channel_id
+        opened = self._api_json(
+            "https://slack.com/api/conversations.open",
+            {"users": channel_id},
+        )
+        return opened["channel"]["id"]
 
     def _api_form(self, url: str, fields: dict) -> dict:
         body = urllib.parse.urlencode(fields).encode()

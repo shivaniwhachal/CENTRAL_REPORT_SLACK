@@ -1,0 +1,71 @@
+name: Daily VINI report
+
+on:
+  schedule:
+    # 6:00, 6:45, 7:30, and 8:30 IST. A later run posts only if an earlier
+    # one did not succeed. GitHub's clock is UTC.
+    - cron: '30 0 * * *'
+    - cron: '15 1 * * *'
+    - cron: '0 2 * * *'
+    - cron: '0 3 * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: central-daily-vini-report
+  cancel-in-progress: false
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip when today's scheduled run already succeeded
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "Manual run. The picture goes to the user only."
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          TODAY=$(date -u +%Y-%m-%d)
+          CNT=$(gh run list --workflow="daily-vini-report.yml" --event schedule --status success --json createdAt -q "[.[] | select(.createdAt | startswith(\"$TODAY\"))] | length" 2>/dev/null || echo 0)
+          if [ "${CNT:-0}" -gt 0 ]; then
+            echo "Already sent today. Skipping."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: steps.gate.outputs.skip != 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        if: steps.gate.outputs.skip != 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install
+        if: steps.gate.outputs.skip != 'true'
+        run: pip install -r requirements.txt
+
+      - name: Send the report
+        if: steps.gate.outputs.skip != 'true'
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_NOTIFY_USER_ID: ${{ secrets.SLACK_NOTIFY_USER_ID }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+          POST_TO_CENTRAL: ${{ secrets.POST_TO_CENTRAL }}
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            # A button run is a test. The central channel is not used.
+            python -m central_analytics_report --test
+          else
+            python -m central_analytics_report --scheduled
+          fi

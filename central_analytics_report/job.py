@@ -52,8 +52,17 @@ def team_channel() -> str:
     return os.environ.get("SLACK_CHANNEL_ID", TEAM_CHANNEL_ID).strip() or TEAM_CHANNEL_ID
 
 
-def bot_dm_channel() -> str:
+def notify_target() -> str:
+    """Who receives the test picture, and the 'Sent' note after a central post."""
+    user_id = os.environ.get("SLACK_NOTIFY_USER_ID", "").strip()
+    if user_id:
+        return user_id
     return os.environ.get("SLACK_DM_CHANNEL_ID", BOT_DM_CHANNEL_ID).strip() or BOT_DM_CHANNEL_ID
+
+
+def post_to_central() -> bool:
+    """Central stays off unless this is the exact word true."""
+    return os.environ.get("POST_TO_CENTRAL", "").strip().lower() == "true"
 
 
 def ist_now(now: datetime | None = None) -> datetime:
@@ -129,14 +138,17 @@ def _set_env_line(path: Path, key: str, value: str) -> None:
 
 
 def approve(root: Path, now: datetime | None = None) -> int:
+    """Arm the central channel for the next 6:00 AM run. Do not post."""
     (root / "channel_approved").write_text("approved\n")
     env_path = root / ".env"
     if not env_path.is_file():
         example = root / ".env.example"
         env_path.write_text(example.read_text() if example.is_file() else "")
     _set_env_line(env_path, "REPORT_CHANNEL_APPROVED", "true")
+    _set_env_line(env_path, "POST_TO_CENTRAL", "true")
     os.environ["REPORT_CHANNEL_APPROVED"] = "true"
-    log("Channel approved. No post sent.", now)
+    os.environ["POST_TO_CENTRAL"] = "true"
+    log("Central channel armed for the next 6:00 AM run. No post sent.", now)
     return 0
 
 
@@ -150,18 +162,34 @@ def run_dry(root: Path, now: datetime, render) -> int:
     return 0
 
 
-def run_test(root: Path, now: datetime, render, slack) -> int:
-    daily = render(root)
-    filename = report_filename(now)
-    title = report_title(now)
-    file_id = slack.upload_png(
-        bot_dm_channel(),
+def _refuse_if_target_is_central(target: str, now: datetime) -> bool:
+    if target != team_channel():
+        return False
+    log("Refusing to post. That destination is the central channel.", now)
+    return True
+
+
+def _upload_picture(slack, now: datetime, daily: Path, destination: str) -> str:
+    return slack.upload_png(
+        destination,
         daily.read_bytes(),
-        filename,
-        title,
+        report_filename(now),
+        report_title(now),
         report_message(now),
     )
-    log(f"Posted the picture to the bot DM {bot_dm_channel()}, Slack file {file_id}. Team channel was not posted.", now)
+
+
+def run_test(root: Path, now: datetime, render, slack) -> int:
+    target = notify_target()
+    if _refuse_if_target_is_central(target, now):
+        return 1
+    daily = render(root)
+    file_id = _upload_picture(slack, now, daily, target)
+    log(
+        f"Posted the picture to {target}, Slack file {file_id}. "
+        "Central channel was not posted.",
+        now,
+    )
     return 0
 
 
@@ -183,35 +211,39 @@ def run_scheduled(root: Path, now: datetime, render, slack) -> int:
         log(f"Already sent ({marker.name}); skipping.", now)
         return 0
 
-    if not channel_is_approved(root):
-        log(
-            "Channel not approved. Need the file channel_approved and "
-            "REPORT_CHANNEL_APPROVED=true in .env. Not posting.",
-            now,
-        )
-        return 0
-
     if slack is None:
         log("SLACK_BOT_TOKEN is not set. Not posting.", now)
         return 1
 
     daily = render(root)
-    filename = report_filename(now)
-    title = report_title(now)
-    message = report_message(now)
-    file_id = slack.upload_png(
-        team_channel(),
-        daily.read_bytes(),
-        filename,
-        title,
-        message,
-    )
+    # POST_TO_CENTRAL must be the word true. Anything else, including a
+    # missing value, sends the picture to the person only.
+    if not post_to_central():
+        target = notify_target()
+        if _refuse_if_target_is_central(target, now):
+            return 1
+        file_id = _upload_picture(slack, now, daily, target)
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        marker.write_text(f"Posted the test picture to {target}, Slack file {file_id}.\n")
+        log(
+            f"Posted the picture to {target}, Slack file {file_id}. "
+            "Central channel was not posted.",
+            now,
+        )
+        return 0
+
+    channel = team_channel()
+    file_id = _upload_picture(slack, now, daily, channel)
     # The picture is already in the team channel. Write the marker before the
     # DM so a later check cannot post the picture a second time.
     marker.parent.mkdir(parents=True, exist_ok=True)
-    marker.write_text(f"Posted to {team_channel()}, Slack file {file_id}.\n")
-    slack.post_text(bot_dm_channel(), dm_note())
-    log(f"Posted to {team_channel()}, Slack file {file_id}. Bot DM notified.", now)
+    marker.write_text(f"Posted to {channel}, Slack file {file_id}.\n")
+    try:
+        slack.post_text(notify_target(), dm_note())
+    except Exception as exc:
+        log(f"Posted to {channel}, Slack file {file_id}. Bot DM failed: {exc}", now)
+        return 0
+    log(f"Posted to {channel}, Slack file {file_id}. Bot DM notified.", now)
     return 0
 
 

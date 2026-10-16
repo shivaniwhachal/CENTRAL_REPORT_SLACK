@@ -70,7 +70,9 @@ class ReportTests(unittest.TestCase):
         self._env = os.environ.copy()
         os.environ["SLACK_CHANNEL_ID"] = "C0AULQ5F2D6"
         os.environ["SLACK_DM_CHANNEL_ID"] = "D0C40GC2CN8"
+        os.environ["SLACK_NOTIFY_USER_ID"] = "UTESTUSER"
         os.environ.pop("REPORT_CHANNEL_APPROVED", None)
+        os.environ.pop("POST_TO_CENTRAL", None)
 
     def tearDown(self):
         os.environ.clear()
@@ -131,15 +133,14 @@ class ReportTests(unittest.TestCase):
         now = at_utc(2026, 10, 16, 2, 35)  # 8:05 IST, inside the window
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            os.environ["REPORT_CHANNEL_APPROVED"] = "true"
-            (root / "channel_approved").write_text("approved\n")
+            os.environ["POST_TO_CENTRAL"] = "true"
             slack = FakeSlack()
             self.assertEqual(run_scheduled(root, now, fake_render, slack), 0)
             self.assertEqual(len(slack.uploads), 1)
             self.assertEqual(slack.uploads[0]["channel_id"], "C0AULQ5F2D6")
             self.assertEqual(slack.uploads[0]["filename"], "daily-vini-report-15-oct.png")
             self.assertEqual(slack.uploads[0]["title"], "Daily VINI report 15 Oct")
-            self.assertEqual(slack.texts, [("D0C40GC2CN8", dm_note())])
+            self.assertEqual(slack.texts, [("UTESTUSER", dm_note())])
             self.assertTrue(sent_marker_path(root, now).is_file())
 
             again = FakeSlack()
@@ -147,15 +148,17 @@ class ReportTests(unittest.TestCase):
             self.assertEqual(again.uploads, [])
             self.assertEqual(again.texts, [])
 
-    def test_missing_approval_does_not_post_or_mark_sent(self):
+    def test_without_the_central_flag_the_picture_goes_only_to_the_user(self):
         now = at_utc(2026, 10, 16, 0, 30)
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             slack = FakeSlack()
-            self.assertFalse(channel_is_approved(root))
             self.assertEqual(run_scheduled(root, now, fake_render, slack), 0)
-            self.assertEqual(slack.uploads, [])
-            self.assertFalse(sent_marker_path(root, now).exists())
+            self.assertEqual(len(slack.uploads), 1)
+            self.assertEqual(slack.uploads[0]["channel_id"], "UTESTUSER")
+            self.assertNotIn("C0AULQ5F2D6", [item["channel_id"] for item in slack.uploads])
+            self.assertEqual(slack.texts, [])
+            self.assertTrue(sent_marker_path(root, now).is_file())
 
     def test_missing_token_waits_out_the_clock_then_refuses_the_post(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -203,7 +206,8 @@ class ReportTests(unittest.TestCase):
             root = Path(tmp)
             slack = FakeSlack()
             self.assertEqual(run_test(root, now, fake_render, slack), 0)
-            self.assertEqual(slack.uploads[0]["channel_id"], "D0C40GC2CN8")
+            self.assertEqual(slack.uploads[0]["channel_id"], "UTESTUSER")
+            self.assertNotEqual(slack.uploads[0]["channel_id"], "C0AULQ5F2D6")
             self.assertEqual(slack.texts, [])
             self.assertFalse(sent_marker_path(root, now).exists())
 
@@ -213,7 +217,9 @@ class ReportTests(unittest.TestCase):
             (root / ".env.example").write_text("SLACK_BOT_TOKEN=\nREPORT_CHANNEL_APPROVED=false\n")
             self.assertEqual(approve(root, at_utc(2026, 10, 16, 0, 30)), 0)
             self.assertTrue((root / "channel_approved").is_file())
-            self.assertIn("REPORT_CHANNEL_APPROVED=true", (root / ".env").read_text())
+            text = (root / ".env").read_text()
+            self.assertIn("REPORT_CHANNEL_APPROVED=true", text)
+            self.assertIn("POST_TO_CENTRAL=true", text)
             self.assertTrue(channel_is_approved(root))
 
 

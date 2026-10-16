@@ -22,7 +22,7 @@ The sender is this git project, branch `main`.
 | Sent marker | `logs/central-sent-YYYY-MM-DD` |
 | Last image | `output/target-summary-daily-report.png` and `output/target-summary.png` |
 | Bot token and channel ids | `.env` (not committed) |
-| Channel approval | `channel_approved`, and `REPORT_CHANNEL_APPROVED=true` in `.env` |
+| Central on/off | Secret `POST_TO_CENTRAL`. Anything other than `true` sends the picture to you only. |
 
 `scripts/independent-slack-reports.gs` is not in this project and is not the sender. Do not install it. The git cron below is the sender.
 
@@ -80,15 +80,13 @@ The bot must already be in #central-analytics-programs. The sheet must stay shar
 
 ## Clock
 
-India time. The job is cron on the remote computer that holds this project. A laptop does not run it.
+India time. A laptop does not run it, and this chat does not run it.
 
-Installed line, on this UTC machine:
+The clock is GitHub Actions on `shivaniwhachal/CENTRAL_REPORT_SLACK`, workflow `.github/workflows/daily-vini-report.yml`. It tries at 6:00, 6:45, 7:30, and 8:30 AM IST. The first success of the day is the post. Later runs that morning stop.
 
-```
-*/5 0,1,2,3 * * * cd /workspace && flock -n /workspace/logs/report.lock /workspace/.venv/bin/python -m central_analytics_report --scheduled >> /workspace/logs/cron.log 2>&1
-```
+`POST_TO_CENTRAL` must be the word `true` before the picture goes to `#central-analytics-programs`. Until then the same 6:00 AM job sends the picture to `SLACK_NOTIFY_USER_ID` only. A manual run of the workflow is also that test. Setup is `docs/SETUP.md`.
 
-That checks every 5 minutes from 5:30 AM IST through 9:25 AM IST. The post itself waits until 6:00 AM IST. It posts once. Later checks see `logs/central-sent-YYYY-MM-DD` and stop.
+The old every-five-minutes cron on this computer is not the sender. That computer can be paused, which is why 16 Oct posted at 8:05 instead of 6:00.
 
 `CENTRAL_REPORT_PAUSED` in `job.py` is `False`. The report is not paused.
 

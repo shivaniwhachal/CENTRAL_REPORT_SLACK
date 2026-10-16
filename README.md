@@ -1,8 +1,10 @@
 # Central Daily VINI report
 
-At 6:00 AM India time this project prints one range of the Google Sheet tab **Daily report** and posts the PNG to `#central-analytics-programs`.
+At 6:00 AM India time this project prints one range of the Google Sheet tab **Daily report** and posts the PNG.
 
-The numbers stay on the sheet. This program does not calculate them. The operating record is [docs/CENTRAL-REPORT.md](docs/CENTRAL-REPORT.md). The wider Central Report map (Sankey, VINI Views, OND WoW) is [docs/CENTRAL-REPORT-MASTER.md](docs/CENTRAL-REPORT-MASTER.md).
+The numbers stay on the sheet. This program does not calculate them. What you need to add is [docs/SETUP.md](docs/SETUP.md). The operating record is [docs/CENTRAL-REPORT.md](docs/CENTRAL-REPORT.md). The wider Central Report map is [docs/CENTRAL-REPORT-MASTER.md](docs/CENTRAL-REPORT-MASTER.md).
+
+While `POST_TO_CENTRAL` is not `true`, the picture goes to your Slack DM only. The central channel is not posted.
 
 ## Run locally
 
@@ -25,13 +27,7 @@ Put `SLACK_BOT_TOKEN` in `.env`. The bot is `daily_vini_report`, with scopes `ch
 
 ## Clock
 
-On the machine that holds this project at `/workspace`:
-
-```bash
-scripts/install_cron.sh
-```
-
-The installed check runs every 5 minutes from 5:30 AM IST through 9:25 AM IST. The post waits until 6:00. `CENTRAL_REPORT_PAUSED` in `central_analytics_report/job.py` is `False`.
+GitHub Actions runs this at 6:00 AM IST from `CENTRAL_REPORT_SLACK`. The steps are in [docs/SETUP.md](docs/SETUP.md). This computer is not the clock. `CENTRAL_REPORT_PAUSED` in `central_analytics_report/job.py` is `False`.
 
 ## Tests
 
