@@ -157,6 +157,15 @@ class ReportTests(unittest.TestCase):
             self.assertEqual(slack.uploads, [])
             self.assertFalse(sent_marker_path(root, now).exists())
 
+    def test_missing_token_waits_out_the_clock_then_refuses_the_post(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            os.environ["REPORT_CHANNEL_APPROVED"] = "true"
+            (root / "channel_approved").write_text("approved\n")
+            self.assertEqual(run_scheduled(root, at_utc(2026, 10, 16, 0, 0), fake_render, None), 0)
+            self.assertEqual(run_scheduled(root, at_utc(2026, 10, 16, 0, 30), fake_render, None), 1)
+            self.assertFalse(sent_marker_path(root, at_utc(2026, 10, 16, 0, 30)).exists())
+
     def test_before_six_and_after_the_window_do_not_post(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

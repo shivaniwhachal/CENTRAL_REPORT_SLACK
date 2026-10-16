@@ -191,6 +191,10 @@ def run_scheduled(root: Path, now: datetime, render, slack) -> int:
         )
         return 0
 
+    if slack is None:
+        log("SLACK_BOT_TOKEN is not set. Not posting.", now)
+        return 1
+
     daily = render(root)
     filename = report_filename(now)
     title = report_title(now)
@@ -239,10 +243,10 @@ def main(argv: list[str] | None = None, now: datetime | None = None, root: Path 
         return run_dry(root, current, render_sheet)
 
     token = os.environ.get("SLACK_BOT_TOKEN", "").strip()
-    if not token:
+    slack = SlackClient(token) if token else None
+    if args.test and slack is None:
         log("SLACK_BOT_TOKEN is not set. Not posting.", current)
         return 1
-    slack = SlackClient(token)
     try:
         if args.test:
             return run_test(root, current, render_sheet, slack)
