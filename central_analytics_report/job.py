@@ -211,26 +211,17 @@ def run_scheduled(root: Path, now: datetime, render, slack) -> int:
         log(f"Already sent ({marker.name}); skipping.", now)
         return 0
 
+    # False, missing, or any other value: the morning job sends nothing.
+    # A hand run (--test) is the bot DM. Only the word true posts to central.
+    if not post_to_central():
+        log("POST_TO_CENTRAL is false. Nothing sent.", now)
+        return 0
+
     if slack is None:
         log("SLACK_BOT_TOKEN is not set. Not posting.", now)
         return 1
 
     daily = render(root)
-    # POST_TO_CENTRAL must be the word true. Anything else, including a
-    # missing value, sends the picture to the person only.
-    if not post_to_central():
-        target = notify_target()
-        if _refuse_if_target_is_central(target, now):
-            return 1
-        file_id = _upload_picture(slack, now, daily, target)
-        marker.parent.mkdir(parents=True, exist_ok=True)
-        marker.write_text(f"Posted the test picture to {target}, Slack file {file_id}.\n")
-        log(
-            f"Posted the picture to {target}, Slack file {file_id}. "
-            "Central channel was not posted.",
-            now,
-        )
-        return 0
 
     channel = team_channel()
     file_id = _upload_picture(slack, now, daily, channel)

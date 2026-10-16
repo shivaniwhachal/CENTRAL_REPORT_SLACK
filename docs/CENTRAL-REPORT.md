@@ -90,7 +90,7 @@ The old every-five-minutes cron on this computer is not the sender. That compute
 
 `CENTRAL_REPORT_PAUSED` in `job.py` is `False`. The report is not paused.
 
-The central channel stays off until `POST_TO_CENTRAL` is `true`. A test, including the 6:00 AM run while that secret is off, sends the picture to `SLACK_NOTIFY_USER_ID` and does not call the central channel.
+The central channel stays off until `POST_TO_CENTRAL` is `true`. While it is `false`, the 6:00 AM job sends nothing. A manual run of the workflow sends the picture to `SLACK_NOTIFY_USER_ID` only.
 
 If the remote computer is paused at 6:00, that minute is skipped. Cron does not go back and run it. The next check after the computer wakes still sends that day’s report, until 9:25 AM IST. After 9:25 AM IST there is no further check until the next morning.
 

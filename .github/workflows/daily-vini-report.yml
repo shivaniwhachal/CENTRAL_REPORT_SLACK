@@ -33,9 +33,16 @@ jobs:
             exit 0
           fi
           TODAY=$(date -u +%Y-%m-%d)
-          CNT=$(gh run list --workflow="daily-vini-report.yml" --event schedule --status success --json createdAt -q "[.[] | select(.createdAt | startswith(\"$TODAY\"))] | length" 2>/dev/null || echo 0)
-          if [ "${CNT:-0}" -gt 0 ]; then
-            echo "Already sent today. Skipping."
+          IDS=$(gh run list --workflow="daily-vini-report.yml" --event schedule --status success --json databaseId,createdAt -q ".[] | select(.createdAt | startswith(\"$TODAY\")) | .databaseId" 2>/dev/null || true)
+          SKIP=false
+          for id in $IDS; do
+            if gh run view "$id" --log 2>/dev/null | grep -q "Posted to "; then
+              SKIP=true
+              break
+            fi
+          done
+          if [ "$SKIP" = "true" ]; then
+            echo "Already posted to the central channel today. Skipping."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"

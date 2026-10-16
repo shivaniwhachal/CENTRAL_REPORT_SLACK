@@ -21,30 +21,30 @@ Slack app scopes for the bot: `chat:write`, `files:write`, `im:write`.
 
 Your member id: in Slack, open your profile, click the three dots, and choose Copy member ID.
 
-## What happens at 6:00 AM
+## The only switch
 
-While `POST_TO_CENTRAL` is not `true`, the morning job sends the picture to you only. The central channel gets nothing.
+`POST_TO_CENTRAL` is the only change after this setup.
 
-The message is:
+| Secret value | 6:00 AM IST | Actions → Run workflow |
+| --- | --- | --- |
+| `false` | Nothing is sent. Not to the central channel. Not to you. | Sends the picture to your bot DM only. |
+| `true` | Posts the picture to `#central-analytics-programs`, then DMs you `Sent. The daily VINI summary is now in #central-analytics-programs.` | Still the bot DM only. The button never posts to the central channel. |
 
-```
-Daily VINI report 15 Oct
-Here is the detailed view
-```
+Set it to `true` before 6:00 AM IST on a morning that should post. If it is still `false` at 6:00, that check sends nothing. A later check the same morning, through 8:30 AM IST, still posts once if you change the secret to `true` before that check.
 
-The date is yesterday in India time. The picture is the sheet’s own print of Daily report, columns B–H, rows 4–22.
+Leave it `false` when Satchit says not to send. No code change, no new workflow run required for that decision. The 6:00 AM job reads the secret on its own.
 
-A manual run of the GitHub Action is the same test. It also sends the picture only to you.
+## Test in the bot conversation
 
-## When the central channel should start
+On the repo: Actions → Daily VINI report → Run workflow.
 
-Set the secret `POST_TO_CENTRAL` to the exact word `true`.
+That run sends the sheet picture only to `SLACK_NOTIFY_USER_ID`. It does not read `POST_TO_CENTRAL` and it does not post to the central channel.
 
-The next 6:00 AM IST run then posts the picture to `#central-analytics-programs` and sends you one line: `Sent. The daily VINI summary is now in #central-analytics-programs.`
+The picture is Daily report columns B–H, rows 4–22. The message is `Daily VINI report <yesterday>` and `Here is the detailed view`.
 
-Before that first central morning, invite the bot `daily_vini_report` to `#central-analytics-programs`. The sheet must stay shared so the PDF can be downloaded.
+## Before the first central morning
 
-Leave `POST_TO_CENTRAL` unset until you have seen one picture in your own DM and you want the channel to receive it. If you set it tonight, tomorrow at 6:00 AM the picture goes to the central channel.
+Invite the bot `daily_vini_report` to `#central-analytics-programs`. The sheet must stay shared so the PDF can be downloaded. The Apps Script should finish updating the Daily report tab before 6:00 AM IST.
 
 ## Clock
 
