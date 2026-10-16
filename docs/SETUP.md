@@ -13,7 +13,7 @@ In the GitHub repo: Settings → Secrets and variables → Actions → New repos
 | `SLACK_BOT_TOKEN` | Bot token for `daily_vini_report`, starting with `xoxb-` | Yes |
 | `SLACK_NOTIFY_USER_ID` | Your Slack member id, starting with `U` | Yes. The test picture goes here. |
 | `SLACK_CHANNEL_ID` | `C0AULQ5F2D6` | No. Saved for later. |
-| `POST_TO_CENTRAL` | Leave this secret out, or set it to `false` | No post to the central channel. |
+| `POST_TO_CENTRAL` | `false` | 6:00 AM sends nothing. |
 
 Do not paste the token into chat.
 

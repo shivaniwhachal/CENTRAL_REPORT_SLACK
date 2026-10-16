@@ -22,7 +22,7 @@ The sender is this git project, branch `main`.
 | Sent marker | `logs/central-sent-YYYY-MM-DD` |
 | Last image | `output/target-summary-daily-report.png` and `output/target-summary.png` |
 | Bot token and channel ids | `.env` (not committed) |
-| Central on/off | Secret `POST_TO_CENTRAL`. Anything other than `true` sends the picture to you only. |
+| Central on/off | Secret `POST_TO_CENTRAL`. `false` sends nothing at 6:00 AM. `true` posts to the central channel. |
 
 `scripts/independent-slack-reports.gs` is not in this project and is not the sender. Do not install it. The git cron below is the sender.
 
@@ -84,7 +84,7 @@ India time. A laptop does not run it, and this chat does not run it.
 
 The clock is GitHub Actions on `shivaniwhachal/CENTRAL_REPORT_SLACK`, workflow `.github/workflows/daily-vini-report.yml`. It tries at 6:00, 6:45, 7:30, and 8:30 AM IST. The first success of the day is the post. Later runs that morning stop.
 
-`POST_TO_CENTRAL` must be the word `true` before the picture goes to `#central-analytics-programs`. Until then the same 6:00 AM job sends the picture to `SLACK_NOTIFY_USER_ID` only. A manual run of the workflow is also that test. Setup is `docs/SETUP.md`.
+`POST_TO_CENTRAL` must be the word `true` before the picture goes to `#central-analytics-programs`. While it is `false`, the 6:00 AM job sends nothing. A manual run of the workflow sends the picture to `SLACK_NOTIFY_USER_ID` only. Setup is `docs/SETUP.md`.
 
 The old every-five-minutes cron on this computer is not the sender. That computer can be paused, which is why 16 Oct posted at 8:05 instead of 6:00.
 
