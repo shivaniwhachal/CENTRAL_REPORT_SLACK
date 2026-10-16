@@ -103,8 +103,22 @@ def report_message(now: datetime) -> str:
     return f"{title}\n<{DETAILED_VIEW_URL}|Here is the detailed view>"
 
 
-def dm_note() -> str:
-    return f"Sent. The daily VINI summary is now in <#{team_channel()}>."
+def dm_note(now: datetime) -> str:
+    return f"Sent. {report_title(now)} is in <#{team_channel()}>."
+
+
+def failure_note(reason: str) -> str:
+    return f"Daily VINI report was not sent. {reason}"
+
+
+def notify_user(slack, text: str, now: datetime) -> None:
+    if slack is None:
+        log("No Slack token, so the notification was not sent.", now)
+        return
+    try:
+        slack.post_text(notify_target(), text)
+    except Exception as exc:
+        log(f"Could not send the notification: {exc}", now)
 
 
 def sent_marker_path(root: Path, now: datetime) -> Path:
@@ -182,9 +196,15 @@ def _upload_picture(slack, now: datetime, daily: Path, destination: str) -> str:
 def run_test(root: Path, now: datetime, render, slack) -> int:
     target = notify_target()
     if _refuse_if_target_is_central(target, now):
+        notify_user(slack, failure_note("The test destination is the central channel."), now)
         return 1
-    daily = render(root)
-    file_id = _upload_picture(slack, now, daily, target)
+    try:
+        daily = render(root)
+        file_id = _upload_picture(slack, now, daily, target)
+    except Exception as exc:
+        log(f"Failed: {exc}", now)
+        notify_user(slack, failure_note(str(exc)), now)
+        return 1
     log(
         f"Posted the picture to {target}, Slack file {file_id}. "
         "Central channel was not posted.",
@@ -196,6 +216,8 @@ def run_test(root: Path, now: datetime, render, slack) -> int:
 def run_scheduled(root: Path, now: datetime, render, slack) -> int:
     if CENTRAL_REPORT_PAUSED:
         log("CENTRAL_REPORT_PAUSED is True. Not posting.", now)
+        if window_status(now) == "open":
+            notify_user(slack, failure_note("The report is paused."), now)
         return 0
 
     status = window_status(now)
@@ -215,25 +237,27 @@ def run_scheduled(root: Path, now: datetime, render, slack) -> int:
     # A hand run (--test) is the bot DM. Only the word true posts to central.
     if not post_to_central():
         log("POST_TO_CENTRAL is false. Nothing sent.", now)
+        notify_user(slack, failure_note("POST_TO_CENTRAL is false."), now)
         return 0
 
     if slack is None:
         log("SLACK_BOT_TOKEN is not set. Not posting.", now)
         return 1
 
-    daily = render(root)
+    try:
+        daily = render(root)
+        channel = team_channel()
+        file_id = _upload_picture(slack, now, daily, channel)
+    except Exception as exc:
+        log(f"Failed: {exc}", now)
+        notify_user(slack, failure_note(str(exc)), now)
+        return 1
 
-    channel = team_channel()
-    file_id = _upload_picture(slack, now, daily, channel)
     # The picture is already in the team channel. Write the marker before the
     # DM so a later check cannot post the picture a second time.
     marker.parent.mkdir(parents=True, exist_ok=True)
     marker.write_text(f"Posted to {channel}, Slack file {file_id}.\n")
-    try:
-        slack.post_text(notify_target(), dm_note())
-    except Exception as exc:
-        log(f"Posted to {channel}, Slack file {file_id}. Bot DM failed: {exc}", now)
-        return 0
+    notify_user(slack, dm_note(now), now)
     log(f"Posted to {channel}, Slack file {file_id}. Bot DM notified.", now)
     return 0
 

@@ -27,8 +27,8 @@ Your member id: in Slack, open your profile, click the three dots, and choose Co
 
 | Secret value | 6:00 AM IST | Actions → Run workflow |
 | --- | --- | --- |
-| `false` | Nothing is sent. Not to the central channel. Not to you. | Sends the picture to your bot DM only. |
-| `true` | Posts the picture to `#central-analytics-programs`, then DMs you `Sent. The daily VINI summary is now in #central-analytics-programs.` | Still the bot DM only. The button never posts to the central channel. |
+| `false` | Nothing is posted. You get one DM: `Daily VINI report was not sent. POST_TO_CENTRAL is false.` | Sends the picture to your bot DM only. |
+| `true` | Posts the picture to `#central-analytics-programs`, then DMs you `Sent. Daily VINI report <date> is in #central-analytics-programs.` If the post fails, that DM instead says the report was not sent and gives the error. | Still the bot DM only. The button never posts to the central channel. |
 
 Set it to `true` before 6:00 AM IST on a morning that should post. If it is still `false` at 6:00, that check sends nothing. A later check the same morning, through 8:30 AM IST, still posts once if you change the secret to `true` before that check.
 

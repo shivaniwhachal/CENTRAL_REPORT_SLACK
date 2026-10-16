@@ -92,7 +92,10 @@ class ReportTests(unittest.TestCase):
             "Daily VINI report 15 Oct\n"
             "<https://docs.google.com/spreadsheets/d/1rNW65NGvWoNXxHI0pKM2kjgW8rZ6ZsoPqIlpa3CDMDc/edit#gid=1271063511|Here is the detailed view>",
         )
-        self.assertEqual(dm_note(), "Sent. The daily VINI summary is now in <#C0AULQ5F2D6>.")
+        self.assertEqual(
+            dm_note(now),
+            "Sent. Daily VINI report 15 Oct is in <#C0AULQ5F2D6>.",
+        )
 
     def test_introduction_is_only_13_oct_2026(self):
         intro = report_message(at_utc(2026, 10, 13, 0, 30))
@@ -140,13 +143,31 @@ class ReportTests(unittest.TestCase):
             self.assertEqual(slack.uploads[0]["channel_id"], "C0AULQ5F2D6")
             self.assertEqual(slack.uploads[0]["filename"], "daily-vini-report-15-oct.png")
             self.assertEqual(slack.uploads[0]["title"], "Daily VINI report 15 Oct")
-            self.assertEqual(slack.texts, [("UTESTUSER", dm_note())])
+            self.assertEqual(slack.texts, [("UTESTUSER", dm_note(now))])
             self.assertTrue(sent_marker_path(root, now).is_file())
 
             again = FakeSlack()
             self.assertEqual(run_scheduled(root, now, fake_render, again), 0)
             self.assertEqual(again.uploads, [])
             self.assertEqual(again.texts, [])
+
+    def test_a_failed_central_post_notifies_the_user(self):
+        now = at_utc(2026, 10, 16, 0, 30)
+
+        class BrokenSlack(FakeSlack):
+            def upload_png(self, *args, **kwargs):
+                raise RuntimeError("channel_not_found")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            os.environ["POST_TO_CENTRAL"] = "true"
+            slack = BrokenSlack()
+            self.assertEqual(run_scheduled(root, now, fake_render, slack), 1)
+            self.assertEqual(
+                slack.texts,
+                [("UTESTUSER", "Daily VINI report was not sent. channel_not_found")],
+            )
+            self.assertFalse(sent_marker_path(root, now).exists())
 
     def test_false_sends_nothing_at_six(self):
         now = at_utc(2026, 10, 16, 0, 30)
@@ -158,7 +179,10 @@ class ReportTests(unittest.TestCase):
             slack = FakeSlack()
             self.assertEqual(run_scheduled(root, now, fake_render, slack), 0)
             self.assertEqual(slack.uploads, [])
-            self.assertEqual(slack.texts, [])
+            self.assertEqual(
+                slack.texts,
+                [("UTESTUSER", "Daily VINI report was not sent. POST_TO_CENTRAL is false.")],
+            )
             self.assertFalse(sent_marker_path(root, now).exists())
 
     def test_missing_token_waits_out_the_clock_then_refuses_the_post(self):

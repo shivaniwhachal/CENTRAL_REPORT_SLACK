@@ -26,6 +26,7 @@ jobs:
         id: gate
         env:
           GH_TOKEN: ${{ github.token }}
+          POST_TO_CENTRAL: ${{ secrets.POST_TO_CENTRAL }}
         run: |
           if [ "${{ github.event_name }}" != "schedule" ]; then
             echo "Manual run. The picture goes to the user only."
@@ -34,15 +35,20 @@ jobs:
           fi
           TODAY=$(date -u +%Y-%m-%d)
           IDS=$(gh run list --workflow="daily-vini-report.yml" --event schedule --status success --json databaseId,createdAt -q ".[] | select(.createdAt | startswith(\"$TODAY\")) | .databaseId" 2>/dev/null || true)
+          if [ "$POST_TO_CENTRAL" = "true" ]; then
+            NEEDLE="Posted to "
+          else
+            NEEDLE="Nothing sent."
+          fi
           SKIP=false
           for id in $IDS; do
-            if gh run view "$id" --log 2>/dev/null | grep -q "Posted to "; then
+            if gh run view "$id" --log 2>/dev/null | grep $'\tSend the report\t' | grep -q "$NEEDLE"; then
               SKIP=true
               break
             fi
           done
           if [ "$SKIP" = "true" ]; then
-            echo "Already posted to the central channel today. Skipping."
+            echo "Today's 6:00 AM outcome is already recorded. Skipping."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
