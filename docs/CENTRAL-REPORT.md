@@ -84,13 +84,13 @@ India time. A laptop does not run it, and this chat does not run it.
 
 The clock is GitHub Actions on `shivaniwhachal/CENTRAL_REPORT_SLACK`, workflow `.github/workflows/daily-vini-report.yml`. It runs once, at 6:00 AM IST. A later start the same morning stops when the `central-sent-YYYY-MM-DD` artifact exists, or when the channel already contains that morning's title.
 
-`POST_TO_CENTRAL` must be the word `true` before the picture goes to `#central-analytics-programs`. While it is `false`, the 6:00 AM job sends nothing. A manual run of the workflow sends the picture to `SLACK_NOTIFY_USER_ID` only. Setup is `docs/SETUP.md`.
+`POST_TO_CENTRAL` must be the word `true` before the picture goes to `#central-analytics-programs`. While it is `false`, the 6:00 AM job sends nothing. The Run workflow button does not send a picture. Setup is `docs/SETUP.md`.
 
 The old every-five-minutes cron on this computer is not the sender. That computer can be paused, which is why 16 Oct posted at 8:05 instead of 6:00.
 
 `CENTRAL_REPORT_PAUSED` in `job.py` is `False`. The report is not paused.
 
-The central channel stays off until `POST_TO_CENTRAL` is `true`. While it is `false`, the 6:00 AM job sends nothing. A manual run of the workflow sends the picture to `SLACK_NOTIFY_USER_ID` only.
+The central channel stays off until `POST_TO_CENTRAL` is `true`. While it is `false`, the 6:00 AM job sends nothing. The Run workflow button does not send a picture.
 
 If the remote computer is paused at 6:00, that minute is skipped. Cron does not go back and run it. The next check after the computer wakes still sends that day’s report, until 9:25 AM IST. After 9:25 AM IST there is no further check until the next morning.
 

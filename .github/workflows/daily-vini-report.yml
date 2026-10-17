@@ -2,14 +2,9 @@ name: Daily VINI report
 
 on:
   schedule:
-    # 6:00 AM IST. One clock. A second start the same morning does not post.
+    # 6:00 AM IST. This is the only run that is allowed to upload.
     - cron: '30 0 * * *'
   workflow_dispatch:
-    inputs:
-      post_to_central:
-        description: Post the picture to the central channel
-        type: boolean
-        default: false
 
 concurrency:
   group: central-daily-vini-report
@@ -31,51 +26,50 @@ jobs:
           set -euo pipefail
           DAY=$(TZ=Asia/Kolkata date +%F)
           echo "day=$DAY" >> "$GITHUB_OUTPUT"
-          if [ "${{ github.event_name }}" != "schedule" ] && [ "${{ inputs.post_to_central }}" != "true" ]; then
-            echo "Manual run. The picture goes to the user only."
-            echo "mode=test" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "Check only. No picture will be sent."
+            echo "mode=check" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           NAME="central-sent-$DAY"
           if ! FOUND=$(gh api "repos/${{ github.repository }}/actions/artifacts?per_page=100" --jq "[.artifacts[] | select(.name==\"$NAME\" and .expired==false)] | length"); then
             echo "Could not check the sent record. Not posting."
-            echo "mode=skip" >> "$GITHUB_OUTPUT"
+            echo "mode=check" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           if [ "$FOUND" != "0" ]; then
-            echo "Already posted $DAY. Not sending again."
-            echo "mode=skip" >> "$GITHUB_OUTPUT"
+            echo "Already posted $DAY. Check only. Not sending again."
+            echo "mode=check" >> "$GITHUB_OUTPUT"
           else
             echo "mode=send" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Check only
+        if: steps.gate.outputs.mode == 'check'
+        run: echo "Check only. Nothing was sent."
+
       - name: Checkout
-        if: steps.gate.outputs.mode != 'skip'
+        if: steps.gate.outputs.mode == 'send'
         uses: actions/checkout@v4
 
       - name: Set up Python
-        if: steps.gate.outputs.mode != 'skip'
+        if: steps.gate.outputs.mode == 'send'
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
       - name: Install
-        if: steps.gate.outputs.mode != 'skip'
+        if: steps.gate.outputs.mode == 'send'
         run: pip install -r requirements.txt
 
       - name: Send the report
-        if: steps.gate.outputs.mode != 'skip'
+        if: steps.gate.outputs.mode == 'send'
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_NOTIFY_USER_ID: ${{ secrets.SLACK_NOTIFY_USER_ID }}
           SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
           POST_TO_CENTRAL: ${{ secrets.POST_TO_CENTRAL }}
-        run: |
-          if [ "${{ steps.gate.outputs.mode }}" = "send" ]; then
-            python -m central_analytics_report --scheduled
-          else
-            python -m central_analytics_report --test
-          fi
+        run: python -m central_analytics_report --scheduled
 
       - name: Check the sent marker
         id: marker

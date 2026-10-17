@@ -4,7 +4,7 @@ At 6:00 AM India time this project prints one range of the Google Sheet tab **Da
 
 The numbers stay on the sheet. This program does not calculate them. What you need to add is [docs/SETUP.md](docs/SETUP.md). The operating record is [docs/CENTRAL-REPORT.md](docs/CENTRAL-REPORT.md). The wider Central Report map is [docs/CENTRAL-REPORT-MASTER.md](docs/CENTRAL-REPORT-MASTER.md).
 
-While `POST_TO_CENTRAL` is `false`, the 6:00 AM job sends nothing. Set that secret to `true` before 6:00 AM IST on a morning the central channel should receive the picture. A manual workflow run sends the picture to your bot DM only.
+While `POST_TO_CENTRAL` is `false`, the 6:00 AM job sends nothing. Set that secret to `true` before 6:00 AM IST on a morning the central channel should receive the picture. The Run workflow button does not send a picture.
 
 ## Run locally
 

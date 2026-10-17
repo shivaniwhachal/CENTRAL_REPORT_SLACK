@@ -27,20 +27,18 @@ Your member id: in Slack, open your profile, click the three dots, and choose Co
 
 | Secret value | 6:00 AM IST | Actions → Run workflow |
 | --- | --- | --- |
-| `false` | Nothing is posted. You get one DM: `Daily VINI report was not sent. POST_TO_CENTRAL is false.` | Sends the picture to your bot DM only. |
-| `true` | Posts the picture to `#central-analytics-programs`, then DMs you `Sent. Daily VINI report <date> is in #central-analytics-programs.` If the post fails, that DM instead says the report was not sent and gives the error. | Still the bot DM only. The button never posts to the central channel. |
+| `false` | Nothing is posted. You get one DM: `Daily VINI report was not sent. POST_TO_CENTRAL is false.` | Check only. Nothing is sent. |
+| `true` | Posts one picture to `#central-analytics-programs`, then DMs you once: `Sent. Daily VINI report <date> is in #central-analytics-programs.` If the post fails, that DM instead says the report was not sent and gives the error. | Check only. Nothing is sent. |
 
 Set it to `true` before 6:00 AM IST on a morning that should post. If it is still `false` at 6:00, that check sends nothing.
 
 Leave it `false` when Satchit says not to send. No code change, no new workflow run required for that decision. The 6:00 AM job reads the secret on its own.
 
-## Test in the bot conversation
+## The Run workflow button
 
 On the repo: Actions → Daily VINI report → Run workflow.
 
-That run sends the sheet picture only to `SLACK_NOTIFY_USER_ID`. It does not read `POST_TO_CENTRAL` and it does not post to the central channel.
-
-The picture is Daily report columns B–H, rows 4–22. The message is `Daily VINI report <yesterday>` and `Here is the detailed view`.
+That button is a check. It does not upload a picture, to you or to the central channel. The only upload is the 6:00 AM run, and only when today's report is not already recorded.
 
 ## Before the first central morning
 
