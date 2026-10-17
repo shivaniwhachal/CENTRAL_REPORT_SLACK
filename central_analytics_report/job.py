@@ -25,8 +25,8 @@ IST = ZoneInfo("Asia/Kolkata")
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 INTRODUCTION_DAY = datetime(2026, 10, 13, tzinfo=IST).date()
 
-# The report is not paused.
-CENTRAL_REPORT_PAUSED = False
+# Paused 18 Oct 2026. The sheet numbers are wrong. Nothing is sent until this is False.
+CENTRAL_REPORT_PAUSED = True
 
 WINDOW_OPEN = 6 * 60
 WINDOW_CLOSE = 9 * 60 + 25
@@ -221,8 +221,6 @@ def run_test(root: Path, now: datetime, render, slack) -> int:
 def run_scheduled(root: Path, now: datetime, render, slack) -> int:
     if CENTRAL_REPORT_PAUSED:
         log("CENTRAL_REPORT_PAUSED is True. Not posting.", now)
-        if window_status(now) == "open":
-            notify_user(slack, failure_note("The report is paused."), now)
         return 0
 
     status = window_status(now)

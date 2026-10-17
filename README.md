@@ -27,7 +27,7 @@ Put `SLACK_BOT_TOKEN` in `.env`. The bot is `daily_vini_report`, with scopes `ch
 
 ## Clock
 
-GitHub Actions runs this at 6:00 AM IST from `CENTRAL_REPORT_SLACK`. The steps are in [docs/SETUP.md](docs/SETUP.md). This computer is not the clock. `CENTRAL_REPORT_PAUSED` in `central_analytics_report/job.py` is `False`.
+The 6:00 AM send is paused. `CENTRAL_REPORT_PAUSED` in `central_analytics_report/job.py` is `True`, and the GitHub workflow is disabled. Nothing goes out until that pause is lifted.
 
 ## Tests
 

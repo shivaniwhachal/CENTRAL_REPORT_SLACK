@@ -77,10 +77,21 @@ class ReportTests(unittest.TestCase):
         os.environ["SLACK_NOTIFY_USER_ID"] = "UTESTUSER"
         os.environ.pop("REPORT_CHANNEL_APPROVED", None)
         os.environ.pop("POST_TO_CENTRAL", None)
+        import central_analytics_report.job as job
+
+        self._paused = job.CENTRAL_REPORT_PAUSED
 
     def tearDown(self):
+        import central_analytics_report.job as job
+
+        job.CENTRAL_REPORT_PAUSED = self._paused
         os.environ.clear()
         os.environ.update(self._env)
+
+    def _resume_for_test(self):
+        import central_analytics_report.job as job
+
+        job.CENTRAL_REPORT_PAUSED = False
 
     def test_title_is_the_previous_india_day(self):
         # 16 Oct 2026 00:30 UTC is 16 Oct 06:00 IST. The sheet is already on yesterday.
@@ -138,6 +149,7 @@ class ReportTests(unittest.TestCase):
 
     def test_scheduled_post_is_once_and_the_picture_stays_out_of_the_dm(self):
         now = at_utc(2026, 10, 16, 2, 35)  # 8:05 IST, inside the window
+        self._resume_for_test()
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             os.environ["POST_TO_CENTRAL"] = "true"
@@ -156,6 +168,7 @@ class ReportTests(unittest.TestCase):
             self.assertEqual(again.texts, [])
 
     def test_scheduled_does_not_post_when_the_channel_already_has_the_title(self):
+        self._resume_for_test()
         now = at_utc(2026, 10, 16, 0, 30)
 
         class Already(FakeSlack):
@@ -174,6 +187,7 @@ class ReportTests(unittest.TestCase):
             self.assertTrue(sent_marker_path(root, now).is_file())
 
     def test_unreadable_channel_history_still_posts_once(self):
+        self._resume_for_test()
         now = at_utc(2026, 10, 16, 0, 30)
 
         class NoHistory(FakeSlack):
@@ -189,6 +203,7 @@ class ReportTests(unittest.TestCase):
             self.assertTrue(sent_marker_path(root, now).is_file())
 
     def test_a_failed_central_post_notifies_the_user(self):
+        self._resume_for_test()
         now = at_utc(2026, 10, 16, 0, 30)
 
         class BrokenSlack(FakeSlack):
@@ -207,6 +222,7 @@ class ReportTests(unittest.TestCase):
             self.assertFalse(sent_marker_path(root, now).exists())
 
     def test_false_sends_nothing_at_six(self):
+        self._resume_for_test()
         now = at_utc(2026, 10, 16, 0, 30)
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -223,6 +239,7 @@ class ReportTests(unittest.TestCase):
             self.assertFalse(sent_marker_path(root, now).exists())
 
     def test_missing_token_waits_out_the_clock_then_refuses_the_post(self):
+        self._resume_for_test()
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             os.environ["POST_TO_CENTRAL"] = "true"
@@ -231,6 +248,7 @@ class ReportTests(unittest.TestCase):
             self.assertFalse(sent_marker_path(root, at_utc(2026, 10, 16, 0, 30)).exists())
 
     def test_before_six_and_after_the_window_do_not_post(self):
+        self._resume_for_test()
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             os.environ["REPORT_CHANNEL_APPROVED"] = "true"
@@ -242,8 +260,8 @@ class ReportTests(unittest.TestCase):
             self.assertEqual(early.uploads, [])
             self.assertEqual(late.uploads, [])
 
-    def test_paused_flag_is_off_and_blocks_when_forced(self):
-        self.assertIs(CENTRAL_REPORT_PAUSED, False)
+    def test_paused_flag_is_on_and_sends_nothing(self):
+        self.assertIs(CENTRAL_REPORT_PAUSED, True)
         import central_analytics_report.job as job
 
         now = at_utc(2026, 10, 16, 0, 30)
@@ -260,6 +278,7 @@ class ReportTests(unittest.TestCase):
                 job.CENTRAL_REPORT_PAUSED = original
             self.assertEqual(code, 0)
             self.assertEqual(slack.uploads, [])
+            self.assertEqual(slack.texts, [])
 
     def test_dm_only_does_not_touch_the_team_channel_or_the_marker(self):
         now = at_utc(2026, 10, 16, 0, 30)

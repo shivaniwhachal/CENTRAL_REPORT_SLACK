@@ -88,7 +88,7 @@ The clock is GitHub Actions on `shivaniwhachal/CENTRAL_REPORT_SLACK`, workflow `
 
 The old every-five-minutes cron on this computer is not the sender. That computer can be paused, which is why 16 Oct posted at 8:05 instead of 6:00.
 
-`CENTRAL_REPORT_PAUSED` in `job.py` is `False`. The report is not paused.
+`CENTRAL_REPORT_PAUSED` in `job.py` is `True` as of 18 Oct 2026. The sheet numbers are wrong, so nothing is sent. The GitHub workflow is disabled and `POST_TO_CENTRAL` is `false`.
 
 The central channel stays off until `POST_TO_CENTRAL` is `true`. While it is `false`, the 6:00 AM job sends nothing. The Run workflow button does not send a picture.
 
