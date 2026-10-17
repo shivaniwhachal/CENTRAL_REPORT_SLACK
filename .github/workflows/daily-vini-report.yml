@@ -8,7 +8,12 @@ on:
     - cron: '15 1 * * *'
     - cron: '0 2 * * *'
     - cron: '0 3 * * *'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      post_to_central:
+        description: Post the picture to the central channel
+        type: boolean
+        default: false
 
 concurrency:
   group: central-daily-vini-report
@@ -28,14 +33,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           POST_TO_CENTRAL: ${{ secrets.POST_TO_CENTRAL }}
         run: |
-          if [ "${{ github.event_name }}" != "schedule" ]; then
+          if [ "${{ github.event_name }}" != "schedule" ] && [ "${{ inputs.post_to_central }}" != "true" ]; then
             echo "Manual run. The picture goes to the user only."
             echo "skip=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           TODAY=$(date -u +%Y-%m-%d)
-          IDS=$(gh run list --workflow="daily-vini-report.yml" --event schedule --status success --json databaseId,createdAt -q ".[] | select(.createdAt | startswith(\"$TODAY\")) | .databaseId" 2>/dev/null || true)
-          if [ "$POST_TO_CENTRAL" = "true" ]; then
+          IDS=$(gh run list --workflow="daily-vini-report.yml" --status success --json databaseId,createdAt -q ".[] | select(.createdAt | startswith(\"$TODAY\")) | .databaseId" 2>/dev/null || true)
+          if [ "$POST_TO_CENTRAL" = "true" ] || [ "${{ inputs.post_to_central }}" = "true" ]; then
             NEEDLE="Posted to "
           else
             NEEDLE="Nothing sent."
@@ -76,9 +81,8 @@ jobs:
           SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
           POST_TO_CENTRAL: ${{ secrets.POST_TO_CENTRAL }}
         run: |
-          if [ "${{ github.event_name }}" != "schedule" ]; then
-            # A button run is a test. The central channel is not used.
-            python -m central_analytics_report --test
-          else
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.post_to_central }}" = "true" ]; then
             python -m central_analytics_report --scheduled
+          else
+            python -m central_analytics_report --test
           fi
