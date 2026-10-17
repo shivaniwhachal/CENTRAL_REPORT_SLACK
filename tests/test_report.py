@@ -26,6 +26,7 @@ from central_analytics_report.job import (
 )
 from central_analytics_report.render import crop_empty_margin
 from central_analytics_report.sheet import export_url
+from central_analytics_report.slack import SlackHistoryUnavailable
 
 IST = ZoneInfo("Asia/Kolkata")
 UTC = ZoneInfo("UTC")
@@ -54,6 +55,9 @@ class FakeSlack:
 
     def post_text(self, channel_id, text):
         self.texts.append((channel_id, text))
+
+    def channel_has_title(self, channel_id, title):
+        return False
 
 
 def fake_render(root: Path) -> Path:
@@ -150,6 +154,39 @@ class ReportTests(unittest.TestCase):
             self.assertEqual(run_scheduled(root, now, fake_render, again), 0)
             self.assertEqual(again.uploads, [])
             self.assertEqual(again.texts, [])
+
+    def test_scheduled_does_not_post_when_the_channel_already_has_the_title(self):
+        now = at_utc(2026, 10, 16, 0, 30)
+
+        class Already(FakeSlack):
+            def channel_has_title(self, channel_id, title):
+                self.seen = (channel_id, title)
+                return True
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            os.environ["POST_TO_CENTRAL"] = "true"
+            slack = Already()
+            self.assertEqual(run_scheduled(root, now, fake_render, slack), 0)
+            self.assertEqual(slack.seen, ("C0AULQ5F2D6", "Daily VINI report 15 Oct"))
+            self.assertEqual(slack.uploads, [])
+            self.assertEqual(slack.texts, [])
+            self.assertTrue(sent_marker_path(root, now).is_file())
+
+    def test_unreadable_channel_history_still_posts_once(self):
+        now = at_utc(2026, 10, 16, 0, 30)
+
+        class NoHistory(FakeSlack):
+            def channel_has_title(self, channel_id, title):
+                raise SlackHistoryUnavailable("missing_scope")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            os.environ["POST_TO_CENTRAL"] = "true"
+            slack = NoHistory()
+            self.assertEqual(run_scheduled(root, now, fake_render, slack), 0)
+            self.assertEqual(len(slack.uploads), 1)
+            self.assertTrue(sent_marker_path(root, now).is_file())
 
     def test_a_failed_central_post_notifies_the_user(self):
         now = at_utc(2026, 10, 16, 0, 30)

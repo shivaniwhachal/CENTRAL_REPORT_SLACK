@@ -82,7 +82,7 @@ The bot must already be in #central-analytics-programs. The sheet must stay shar
 
 India time. A laptop does not run it, and this chat does not run it.
 
-The clock is GitHub Actions on `shivaniwhachal/CENTRAL_REPORT_SLACK`, workflow `.github/workflows/daily-vini-report.yml`. It tries at 6:00, 6:45, 7:30, and 8:30 AM IST. The first success of the day is the post. Later runs that morning stop.
+The clock is GitHub Actions on `shivaniwhachal/CENTRAL_REPORT_SLACK`, workflow `.github/workflows/daily-vini-report.yml`. It runs once, at 6:00 AM IST. A later start the same morning stops when the `central-sent-YYYY-MM-DD` artifact exists, or when the channel already contains that morning's title.
 
 `POST_TO_CENTRAL` must be the word `true` before the picture goes to `#central-analytics-programs`. While it is `false`, the 6:00 AM job sends nothing. A manual run of the workflow sends the picture to `SLACK_NOTIFY_USER_ID` only. Setup is `docs/SETUP.md`.
 
@@ -108,6 +108,7 @@ These lines are the handoff record. This checkout does not contain those Slack f
 | 14 Oct 2026, 6:09 AM | Posted to `C0AULQ5F2D6`, Slack file `F0C8KJP8X6K`. Bot DM notified. The 6:00 check did not run. The 6:09 check did. |
 | 15 Oct 2026 | `logs/central-sent-2026-10-15` existed. From 7:05 AM the job skipped as already sent. `logs/cron.log` had no “Posted” line for 15 Oct. |
 | 16 Oct 2026, 8:05 AM | Posted to `C0AULQ5F2D6`, Slack file `F0C9N35AHGE`. Message for that morning is Daily VINI report 15 Oct. Bot DM notified. The 6:00 check did not run. The computer’s first check that morning was 8:05. |
+| 17 Oct 2026 | Five posts to `C0AULQ5F2D6`: 6:06 `F0C9XEP2V8E` (manual), 6:38 `F0C9ZB6P0RY`, 7:05 `F0C9XLBQ014`, 7:49 `F0CA1KZTAQ1`, 8:49 `F0C9JGVN3AB`. The 6:45, 7:30, and 8:30 clocks each posted again. Those clocks are removed. |
 
 ## Commands
 

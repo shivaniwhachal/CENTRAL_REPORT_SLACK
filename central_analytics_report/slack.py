@@ -12,6 +12,10 @@ class SlackError(RuntimeError):
     pass
 
 
+class SlackHistoryUnavailable(SlackError):
+    """The bot cannot read the channel, so it cannot prove the report is already there."""
+
+
 class SlackClient:
     def __init__(self, token: str, opener=None):
         if not token:
@@ -51,6 +55,26 @@ class SlackClient:
             "https://slack.com/api/chat.postMessage",
             {"channel": self._destination(channel_id), "text": text},
         )
+
+    def channel_has_title(self, channel_id: str, title: str) -> bool:
+        """True when this morning's title is already in the channel."""
+        destination = self._destination(channel_id)
+        try:
+            history = self._api_form(
+                "https://slack.com/api/conversations.history",
+                {"channel": destination, "limit": "50"},
+            )
+        except SlackError as exc:
+            if any(token in str(exc) for token in ("missing_scope", "not_in_channel", "channel_not_found")):
+                raise SlackHistoryUnavailable(str(exc)) from exc
+            raise
+        for message in history.get("messages") or []:
+            if title in (message.get("text") or ""):
+                return True
+            for item in message.get("files") or []:
+                if title in (item.get("title") or "") or title in (item.get("name") or ""):
+                    return True
+        return False
 
     def _destination(self, channel_id: str) -> str:
         """A member id (U…) is opened as a DM. A channel id is used as given."""

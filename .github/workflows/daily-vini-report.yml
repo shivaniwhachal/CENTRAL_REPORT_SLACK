@@ -2,12 +2,8 @@ name: Daily VINI report
 
 on:
   schedule:
-    # 6:00, 6:45, 7:30, and 8:30 IST. A later run posts only if an earlier
-    # one did not succeed. GitHub's clock is UTC.
+    # 6:00 AM IST. One clock. A second start the same morning does not post.
     - cron: '30 0 * * *'
-    - cron: '15 1 * * *'
-    - cron: '0 2 * * *'
-    - cron: '0 3 * * *'
   workflow_dispatch:
     inputs:
       post_to_central:
@@ -20,69 +16,82 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  actions: read
+  actions: write
   contents: read
 
 jobs:
   send:
     runs-on: ubuntu-latest
     steps:
-      - name: Skip when today's scheduled run already succeeded
+      - name: One post per morning
         id: gate
         env:
           GH_TOKEN: ${{ github.token }}
-          POST_TO_CENTRAL: ${{ secrets.POST_TO_CENTRAL }}
         run: |
+          set -euo pipefail
+          DAY=$(TZ=Asia/Kolkata date +%F)
+          echo "day=$DAY" >> "$GITHUB_OUTPUT"
           if [ "${{ github.event_name }}" != "schedule" ] && [ "${{ inputs.post_to_central }}" != "true" ]; then
             echo "Manual run. The picture goes to the user only."
-            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "mode=test" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          TODAY=$(date -u +%Y-%m-%d)
-          IDS=$(gh run list --workflow="daily-vini-report.yml" --status success --json databaseId,createdAt -q ".[] | select(.createdAt | startswith(\"$TODAY\")) | .databaseId" 2>/dev/null || true)
-          if [ "$POST_TO_CENTRAL" = "true" ] || [ "${{ inputs.post_to_central }}" = "true" ]; then
-            NEEDLE="Posted to "
-          else
-            NEEDLE="Nothing sent."
+          NAME="central-sent-$DAY"
+          if ! FOUND=$(gh api "repos/${{ github.repository }}/actions/artifacts?per_page=100" --jq "[.artifacts[] | select(.name==\"$NAME\" and .expired==false)] | length"); then
+            echo "Could not check the sent record. Not posting."
+            echo "mode=skip" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
-          SKIP=false
-          for id in $IDS; do
-            if gh run view "$id" --log 2>/dev/null | grep $'\tSend the report\t' | grep -q "$NEEDLE"; then
-              SKIP=true
-              break
-            fi
-          done
-          if [ "$SKIP" = "true" ]; then
-            echo "Today's 6:00 AM outcome is already recorded. Skipping."
-            echo "skip=true" >> "$GITHUB_OUTPUT"
+          if [ "$FOUND" != "0" ]; then
+            echo "Already posted $DAY. Not sending again."
+            echo "mode=skip" >> "$GITHUB_OUTPUT"
           else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "mode=send" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Checkout
-        if: steps.gate.outputs.skip != 'true'
+        if: steps.gate.outputs.mode != 'skip'
         uses: actions/checkout@v4
 
       - name: Set up Python
-        if: steps.gate.outputs.skip != 'true'
+        if: steps.gate.outputs.mode != 'skip'
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
       - name: Install
-        if: steps.gate.outputs.skip != 'true'
+        if: steps.gate.outputs.mode != 'skip'
         run: pip install -r requirements.txt
 
       - name: Send the report
-        if: steps.gate.outputs.skip != 'true'
+        if: steps.gate.outputs.mode != 'skip'
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_NOTIFY_USER_ID: ${{ secrets.SLACK_NOTIFY_USER_ID }}
           SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
           POST_TO_CENTRAL: ${{ secrets.POST_TO_CENTRAL }}
         run: |
-          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.post_to_central }}" = "true" ]; then
+          if [ "${{ steps.gate.outputs.mode }}" = "send" ]; then
             python -m central_analytics_report --scheduled
           else
             python -m central_analytics_report --test
           fi
+
+      - name: Check the sent marker
+        id: marker
+        if: steps.gate.outputs.mode == 'send' && success()
+        run: |
+          if compgen -G "logs/central-sent-*" > /dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Record that today was sent
+        if: steps.gate.outputs.mode == 'send' && steps.marker.outputs.exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: central-sent-${{ steps.gate.outputs.day }}
+          path: logs/
+          retention-days: 14
+          if-no-files-found: error

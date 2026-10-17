@@ -30,7 +30,7 @@ Your member id: in Slack, open your profile, click the three dots, and choose Co
 | `false` | Nothing is posted. You get one DM: `Daily VINI report was not sent. POST_TO_CENTRAL is false.` | Sends the picture to your bot DM only. |
 | `true` | Posts the picture to `#central-analytics-programs`, then DMs you `Sent. Daily VINI report <date> is in #central-analytics-programs.` If the post fails, that DM instead says the report was not sent and gives the error. | Still the bot DM only. The button never posts to the central channel. |
 
-Set it to `true` before 6:00 AM IST on a morning that should post. If it is still `false` at 6:00, that check sends nothing. A later check the same morning, through 8:30 AM IST, still posts once if you change the secret to `true` before that check.
+Set it to `true` before 6:00 AM IST on a morning that should post. If it is still `false` at 6:00, that check sends nothing.
 
 Leave it `false` when Satchit says not to send. No code change, no new workflow run required for that decision. The 6:00 AM job reads the secret on its own.
 
@@ -48,6 +48,6 @@ Invite the bot `daily_vini_report` to `#central-analytics-programs`. The sheet m
 
 ## Clock
 
-GitHub runs the workflow at 6:00, 6:45, 7:30, and 8:30 AM IST. The first success wins. Later runs that morning do nothing.
+GitHub runs the workflow once, at 6:00 AM IST. If that run is delayed, it can still post until 9:25 AM IST. A second start the same morning finds the sent record and does not post again. The job also reads the channel: if today's title is already there, it does not upload.
 
 The sheet’s Apps Script should finish updating the Daily report tab before 6:00 AM IST.

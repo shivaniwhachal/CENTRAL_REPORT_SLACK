@@ -126,6 +126,11 @@ def sent_marker_path(root: Path, now: datetime) -> Path:
     return root / "logs" / f"central-sent-{day}"
 
 
+def _mark_sent(marker: Path, text: str) -> None:
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text(text.rstrip() + "\n")
+
+
 def channel_is_approved(root: Path) -> bool:
     flag = os.environ.get("REPORT_CHANNEL_APPROVED", "").strip().lower() == "true"
     return flag and (root / "channel_approved").is_file()
@@ -244,6 +249,23 @@ def run_scheduled(root: Path, now: datetime, render, slack) -> int:
         log("SLACK_BOT_TOKEN is not set. Not posting.", now)
         return 1
 
+    from central_analytics_report.slack import SlackHistoryUnavailable
+
+    title = report_title(now)
+    try:
+        already_there = slack.channel_has_title(team_channel(), title)
+    except SlackHistoryUnavailable as exc:
+        already_there = False
+        log(f"Channel history is unreadable ({exc}). The sent record is the lock.", now)
+    except Exception as exc:
+        log(f"Could not read the channel before posting: {exc}", now)
+        notify_user(slack, failure_note(str(exc)), now)
+        return 1
+    if already_there:
+        _mark_sent(marker, f"Already in the channel: {title}.")
+        log(f"Already in the channel ({title}). Not posting again.", now)
+        return 0
+
     try:
         daily = render(root)
         channel = team_channel()
@@ -255,8 +277,7 @@ def run_scheduled(root: Path, now: datetime, render, slack) -> int:
 
     # The picture is already in the team channel. Write the marker before the
     # DM so a later check cannot post the picture a second time.
-    marker.parent.mkdir(parents=True, exist_ok=True)
-    marker.write_text(f"Posted to {channel}, Slack file {file_id}.\n")
+    _mark_sent(marker, f"Posted to {channel}, Slack file {file_id}.")
     notify_user(slack, dm_note(now), now)
     log(f"Posted to {channel}, Slack file {file_id}. Bot DM notified.", now)
     return 0
