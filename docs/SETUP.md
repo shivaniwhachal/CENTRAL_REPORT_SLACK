@@ -46,6 +46,6 @@ Invite the bot `daily_vini_report` to `#central-analytics-programs`. The sheet m
 
 ## Clock
 
-GitHub runs the workflow once, at 6:00 AM IST. If that run is delayed, it can still post until 9:25 AM IST. A second start the same morning finds the sent record and does not post again. The job also reads the channel: if today's title is already there, it does not upload.
+GitHub runs the workflow at 6:00 AM IST. That run posts one picture. A second run at 7:00 AM IST checks first. If today's picture is already recorded, or already in the channel, 7:00 does not post. If it is not there, 7:00 posts it once. Nothing posts after 8:00 AM IST.
 
 The sheet’s Apps Script should finish updating the Daily report tab before 6:00 AM IST.

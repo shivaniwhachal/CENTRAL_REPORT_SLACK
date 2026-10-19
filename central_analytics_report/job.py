@@ -25,11 +25,13 @@ IST = ZoneInfo("Asia/Kolkata")
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 INTRODUCTION_DAY = datetime(2026, 10, 13, tzinfo=IST).date()
 
-# Paused 18 Oct 2026. The sheet numbers are wrong. Nothing is sent until this is False.
-CENTRAL_REPORT_PAUSED = True
+# The report is not paused.
+CENTRAL_REPORT_PAUSED = False
 
 WINDOW_OPEN = 6 * 60
-WINDOW_CLOSE = 9 * 60 + 25
+# 6:00 AM posts. 7:00 AM posts only if that picture is not already there.
+# After 8:00 AM nothing else can post.
+WINDOW_CLOSE = 8 * 60
 
 
 def project_root() -> Path:
@@ -228,7 +230,7 @@ def run_scheduled(root: Path, now: datetime, render, slack) -> int:
         log("Before 6:00 AM IST. Not posting yet.", now)
         return 0
     if status == "after":
-        log("After 9:25 AM IST. No further check until the next morning.", now)
+        log("After 8:00 AM IST. No further check until the next morning.", now)
         return 0
 
     marker = sent_marker_path(root, now)

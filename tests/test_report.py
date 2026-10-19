@@ -119,12 +119,13 @@ class ReportTests(unittest.TestCase):
         later = report_message(at_utc(2026, 10, 14, 0, 30))
         self.assertTrue(later.startswith("Daily VINI report 13 Oct"))
 
-    def test_window_waits_until_six_and_stops_after_nine_twenty_five(self):
+    def test_window_waits_until_six_and_stops_after_eight(self):
         self.assertEqual(window_status(at_utc(2026, 10, 16, 0, 0)), "before")  # 5:30 IST
         self.assertEqual(window_status(at_utc(2026, 10, 16, 0, 25)), "before")  # 5:55 IST
         self.assertEqual(window_status(at_utc(2026, 10, 16, 0, 30)), "open")  # 6:00 IST
-        self.assertEqual(window_status(at_utc(2026, 10, 16, 3, 55)), "open")  # 9:25 IST
-        self.assertEqual(window_status(at_utc(2026, 10, 16, 3, 56)), "after")  # 9:26 IST
+        self.assertEqual(window_status(at_utc(2026, 10, 16, 1, 30)), "open")  # 7:00 IST
+        self.assertEqual(window_status(at_utc(2026, 10, 16, 2, 30)), "open")  # 8:00 IST
+        self.assertEqual(window_status(at_utc(2026, 10, 16, 2, 31)), "after")  # 8:01 IST
 
     def test_export_prints_b4_h22_and_does_not_unhide_rows(self):
         url = export_url()
@@ -148,7 +149,7 @@ class ReportTests(unittest.TestCase):
         self.assertGreaterEqual(cropped.height, 25)
 
     def test_scheduled_post_is_once_and_the_picture_stays_out_of_the_dm(self):
-        now = at_utc(2026, 10, 16, 2, 35)  # 8:05 IST, inside the window
+        now = at_utc(2026, 10, 16, 1, 35)  # 7:05 IST, inside the window
         self._resume_for_test()
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -260,8 +261,8 @@ class ReportTests(unittest.TestCase):
             self.assertEqual(early.uploads, [])
             self.assertEqual(late.uploads, [])
 
-    def test_paused_flag_is_on_and_sends_nothing(self):
-        self.assertIs(CENTRAL_REPORT_PAUSED, True)
+    def test_paused_flag_is_off_and_blocks_when_forced(self):
+        self.assertIs(CENTRAL_REPORT_PAUSED, False)
         import central_analytics_report.job as job
 
         now = at_utc(2026, 10, 16, 0, 30)

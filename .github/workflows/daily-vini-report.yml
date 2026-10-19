@@ -2,8 +2,10 @@ name: Daily VINI report
 
 on:
   schedule:
-    # 6:00 AM IST. This is the only run that is allowed to upload.
+    # 6:00 AM IST sends the picture. 7:00 AM IST checks.
+    # The 7:00 run uploads only when today's picture is not already recorded.
     - cron: '30 0 * * *'
+    - cron: '30 1 * * *'
   workflow_dispatch:
 
 concurrency:
@@ -40,7 +42,11 @@ jobs:
           if [ "$FOUND" != "0" ]; then
             echo "Already posted $DAY. Check only. Not sending again."
             echo "mode=check" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "30 1 * * *" ]; then
+            echo "7:00 AM check. Today's picture is not recorded, so this run may send it once."
+            echo "mode=send" >> "$GITHUB_OUTPUT"
           else
+            echo "6:00 AM send."
             echo "mode=send" >> "$GITHUB_OUTPUT"
           fi
 

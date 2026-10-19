@@ -82,17 +82,17 @@ The bot must already be in #central-analytics-programs. The sheet must stay shar
 
 India time. A laptop does not run it, and this chat does not run it.
 
-The clock is GitHub Actions on `shivaniwhachal/CENTRAL_REPORT_SLACK`, workflow `.github/workflows/daily-vini-report.yml`. It runs once, at 6:00 AM IST. A later start the same morning stops when the `central-sent-YYYY-MM-DD` artifact exists, or when the channel already contains that morning's title.
+The clock is GitHub Actions on `shivaniwhachal/CENTRAL_REPORT_SLACK`, workflow `.github/workflows/daily-vini-report.yml`. It runs at 6:00 AM IST and checks again at 7:00 AM IST. The 7:00 run posts only when the `central-sent-YYYY-MM-DD` record is missing and the channel does not already contain that morning's title.
 
 `POST_TO_CENTRAL` must be the word `true` before the picture goes to `#central-analytics-programs`. While it is `false`, the 6:00 AM job sends nothing. The Run workflow button does not send a picture. Setup is `docs/SETUP.md`.
 
 The old every-five-minutes cron on this computer is not the sender. That computer can be paused, which is why 16 Oct posted at 8:05 instead of 6:00.
 
-`CENTRAL_REPORT_PAUSED` in `job.py` is `True` as of 18 Oct 2026. The sheet numbers are wrong, so nothing is sent. The GitHub workflow is disabled and `POST_TO_CENTRAL` is `false`.
+`CENTRAL_REPORT_PAUSED` in `job.py` is `False`. `POST_TO_CENTRAL` is `true`. One picture goes at 6:00 AM IST. The 7:00 AM run sends only if that picture is not already there.
 
 The central channel stays off until `POST_TO_CENTRAL` is `true`. While it is `false`, the 6:00 AM job sends nothing. The Run workflow button does not send a picture.
 
-If the remote computer is paused at 6:00, that minute is skipped. Cron does not go back and run it. The next check after the computer wakes still sends that day’s report, until 9:25 AM IST. After 9:25 AM IST there is no further check until the next morning.
+The 6:00 AM run posts one picture. The 7:00 AM run posts only if that picture is not already in the channel. After 8:00 AM IST there is no further send until the next morning.
 
 Closing a laptop does not by itself stop the job. The job stops only when the remote computer is paused.
 

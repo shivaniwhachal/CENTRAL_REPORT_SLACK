@@ -23,11 +23,11 @@ Put `SLACK_BOT_TOKEN` in `.env`. The bot is `daily_vini_report`, with scopes `ch
 .venv/bin/python -m central_analytics_report --scheduled
 ```
 
-`--dry-run` writes `output/target-summary-daily-report.png` and `output/target-summary.png` and does not post. `--test` posts that picture to the bot DM only. `--approve` allows the team channel and does not post. `--scheduled` is the 6:00 AM path: it posts once, between 6:00 and 9:25 AM IST, and only when both approval gates are set.
+`--dry-run` writes `output/target-summary-daily-report.png` and `output/target-summary.png` and does not post. `--test` posts that picture to the bot DM only. `--approve` allows the team channel and does not post. `--scheduled` is the morning path: it posts once, between 6:00 and 8:00 AM IST, and only when the picture is not already in the channel.
 
 ## Clock
 
-The 6:00 AM send is paused. `CENTRAL_REPORT_PAUSED` in `central_analytics_report/job.py` is `True`, and the GitHub workflow is disabled. Nothing goes out until that pause is lifted.
+GitHub Actions posts one picture at 6:00 AM IST. At 7:00 AM it checks. If the picture is already there, it does not send again. `CENTRAL_REPORT_PAUSED` in `central_analytics_report/job.py` is `False`.
 
 ## Tests
 
